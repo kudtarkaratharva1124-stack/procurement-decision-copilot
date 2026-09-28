@@ -94,3 +94,14 @@ git rm --cached azure_function/__azurite_db_queue_extent__.json
 git rm --cached azure_function/__azurite_db_table__.json
 git rm --cached azure_function/__blobstorage__/df4f7e66-58e2-4b3f-8329-ce947ea6c1b1
 git rm --cached azure_function/AzuriteConfig
+# Azurite local runtime files
+__azurite_db_*
+azure_function/__azurite_db_*
+azure_function/__blobstorage__/
+azure_function/AzuriteConfig
+
+# Azurite local runtime
+__azurite_db_*
+azure_function/__azurite_db_*
+azure_function/__blobstorage__/
+azure_function/AzuriteConfig
