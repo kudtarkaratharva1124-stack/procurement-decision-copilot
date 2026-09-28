@@ -1,0 +1,250 @@
+from __future__ import annotations
+
+import json
+import os
+
+from dotenv import load_dotenv
+
+from ..config import settings
+from .voice import VoiceProfileService
+from .rfa_knowledge import RFAKnowledgeService
+
+load_dotenv()
+
+
+SYSTEM = """You are the Procurement Decision Copilot.
+
+Never make the final procurement decision.
+
+Analyze the live procurement case and:
+- identify the problem
+- extract important facts
+- surface concerns
+- explain risks and dependencies
+- identify missing evidence
+- provide a recommendation for human review
+- prepare a professional draft reply
+
+Do not invent facts.
+
+Clearly separate:
+1. Live-case evidence
+2. Reference guidance
+3. Inference
+
+The RFA reference files are guidance for reasoning structure and
+category-specific checks. They are NOT evidence for the current case.
+
+If live evidence is missing or contradictory, say so and request
+clarification instead of filling the gap.
+
+Return valid JSON with exactly these keys:
+problem_statement,
+recommendation,
+next_actions,
+assumptions,
+risks,
+evidence_questions,
+draft_reply
+"""
+
+
+class AIService:
+    def __init__(self):
+        self.llm = None
+        self.voice = VoiceProfileService()
+        self.knowledge = RFAKnowledgeService()
+
+    def _llm(self):
+        if self.llm:
+            return self.llm
+
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+
+        if not endpoint or not api_key or not deployment:
+            return None
+
+        from openai import OpenAI
+
+        self.llm = OpenAI(
+            api_key=api_key,
+            base_url=endpoint.rstrip("/") + "/openai/v1/"
+        )
+
+        return self.llm
+
+    def analyze(self, case: dict) -> dict:
+        client = self._llm()
+
+        if not client:
+            return self.demo(case)
+
+        voice = self.voice.get(case.get("approver", "default"))
+
+        references = self.knowledge.retrieve(
+            case,
+            limit=3
+        )
+
+        reference_block = "\n\n".join(
+            f"--- REFERENCE GUIDANCE: {r['name']} ---\n"
+            f"{r['text'][:10000]}"
+            for r in references
+        )
+
+        prompt = (
+            SYSTEM
+            + "\n\nVOICE PROFILE:\n"
+            + json.dumps(
+                voice,
+                ensure_ascii=False
+            )
+            + "\n\nREFERENCE RFA GUIDANCE:\n"
+            + reference_block
+            + "\n\nLIVE CASE DATA — "
+              "THIS IS THE ONLY SOURCE OF CURRENT-CASE FACTS:\n"
+            + json.dumps(
+                case,
+                ensure_ascii=False,
+                default=str
+            )[:50000]
+        )
+
+        try:
+            response = client.chat.completions.create(
+                model=os.getenv(
+                    "AZURE_OPENAI_DEPLOYMENT_NAME"
+                ),
+                messages=[
+                    {
+                        "role": "system",
+                        "content": SYSTEM
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0
+            )
+
+            text = response.choices[0].message.content
+
+            return self._parse_json(text)
+
+        except Exception as exc:
+            return {
+                "problem_statement":
+                    "Azure AI analysis could not be completed.",
+
+                "recommendation":
+                    "Human review required.",
+
+                "next_actions": [
+                    "Check Azure AI connection",
+                    "Validate the live case evidence",
+                    "Approve, edit, reject, or request clarification"
+                ],
+
+                "assumptions": [],
+
+                "risks": [
+                    f"AI service error: {str(exc)}"
+                ],
+
+                "evidence_questions": [],
+
+                "draft_reply":
+                    "Please review the procurement request "
+                    "and confirm the appropriate action."
+            }
+
+    def _parse_json(self, text: str) -> dict:
+        """
+        Parse JSON returned by the model.
+        Handles markdown JSON fences if the model adds them.
+        """
+
+        text = text.strip()
+
+        if text.startswith("```"):
+            text = text.replace("```json", "", 1)
+            text = text.replace("```", "")
+            text = text.strip()
+
+        try:
+            return json.loads(text)
+
+        except Exception:
+            return {
+                "problem_statement": text,
+
+                "recommendation":
+                    "Human review required.",
+
+                "next_actions": [
+                    "Validate evidence",
+                    "Review the recommendation",
+                    "Record the human decision"
+                ],
+
+                "assumptions": [],
+
+                "risks": [
+                    "LLM output was not valid JSON."
+                ],
+
+                "evidence_questions": [],
+
+                "draft_reply":
+                    "Please review the decision card "
+                    "and confirm the appropriate procurement action."
+            }
+
+    def demo(self, case):
+        return {
+            "problem_statement":
+                f"Review {case.get('category', 'RFA')} case "
+                f"{case.get('case_key')} and resolve the key "
+                "budget, commercial, evidence or delivery concern "
+                "before approval.",
+
+            "recommendation":
+                "Validate the identified variance and supporting "
+                "evidence, then approve, reject, or request clarification.",
+
+            "next_actions": [
+                "Validate commercial figures",
+                "Review supporting evidence",
+                "Confirm policy/approval requirements",
+                "Record the human decision"
+            ],
+
+            "assumptions": [
+                "Demo mode is active; external system evidence "
+                "may not be connected."
+            ],
+
+            "risks": [
+                "Incomplete external-system context can change "
+                "the recommendation."
+            ],
+
+            "evidence_questions": [
+                "Are the quoted values consistent with the "
+                "source documents?",
+                "Are payment terms and delivery terms aligned?"
+            ],
+
+            "draft_reply":
+                f"Hello,\n\n"
+                f"Please review the decision card for case "
+                f"{case.get('case_key')}.\n\n"
+                f"The case requires validation of the key "
+                f"commercial and evidence points before a final "
+                f"procurement decision.\n\n"
+                f"Regards,\n"
+                f"Procurement Team"
+        }

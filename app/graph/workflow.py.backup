@@ -1,0 +1,31 @@
+from __future__ import annotations
+from typing import TypedDict, Any
+from langgraph.graph import StateGraph, START, END
+from ..config import settings
+from ..services.ai import AIService
+from ..services.rfa_knowledge import RFAKnowledgeService
+
+class State(TypedDict, total=False):
+    case: dict
+    evidence: list
+    extracted: dict
+    analysis: dict
+    status: str
+
+class ProcurementGraph:
+    def __init__(self, context_service):
+        self.context=context_service; self.ai=AIService(); self.knowledge=RFAKnowledgeService(); self.graph=self._build()
+    def _build(self):
+        g=StateGraph(State)
+        g.add_node('aggregate_context', self.aggregate_context)
+        g.add_node('reason_and_recommend', self.reason_and_recommend)
+        g.add_node('prepare_decision_card', self.prepare_decision_card)
+        g.add_edge(START,'aggregate_context'); g.add_edge('aggregate_context','reason_and_recommend'); g.add_edge('reason_and_recommend','prepare_decision_card'); g.add_edge('prepare_decision_card',END)
+        return g.compile()
+    def aggregate_context(self,s):
+        case=s['case']; ctx=self.context.collect(case); s['evidence']=ctx['evidence']; s['extracted']=ctx['extracted']; return s
+    def reason_and_recommend(self,s):
+        case=dict(s['case']); case['evidence']=s.get('evidence',[]); case['extracted']=s.get('extracted',{}); case['reference_examples']=[{'name':r['name'],'category':r['category']} for r in self.knowledge.retrieve(case, limit=3)]; s['analysis']=self.ai.analyze(case); return s
+    def prepare_decision_card(self,s):
+        a=s['analysis']; s['case'].update({'problem_statement':a.get('problem_statement',''),'recommendation':a.get('recommendation',''),'draft_body':a.get('draft_reply',''),'explainability':{'next_actions':a.get('next_actions',[]),'assumptions':a.get('assumptions',[]),'risks':a.get('risks',[]),'evidence_questions':a.get('evidence_questions',[])},'evidence':s.get('evidence',[]),'extracted':s.get('extracted',{}),'sources':[x.get('source') for x in s.get('evidence',[]) if isinstance(x,dict) and x.get('source')]}); return s
+    def run(self, case): return self.graph.invoke({'case':case})['case']

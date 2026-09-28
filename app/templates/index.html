@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Procurement Decision Copilot</title><link rel="stylesheet" href="/static/app.css"></head>
+<body>
+<header>
+    <div>
+        <h1>Procurement Decision Copilot</h1>
+        <p>RFA/MOU decision support • Human-in-the-loop • Microsoft stack</p>
+    </div>
+
+    <div class="actions">
+        <button onclick="refreshInbox()">Refresh Inbox</button>
+        <button class="primary-button" onclick="startAIAnalysis()">Start AI Analysis</button>
+        <button onclick="discover()">Detect Integrations</button>
+    </div>
+</header>
+<main>
+<section class="grid stats"><div><span>Cases</span><b id="caseCount">0</b></div><div><span>Pending</span><b id="pendingCount">0</b></div><div><span>Azure OpenAI</span><b id="aiStatus">-</b></div><div><span>Graph</span><b id="graphStatus">-</b></div></section>
+<section class="layout"><aside><h2>Decision Queue</h2><div id="cases"></div></aside><article id="detail"><div class="empty">Select a case to inspect its Decision Card.</div></article></section>
+</main><script src="/static/app.js"></script></body></html>

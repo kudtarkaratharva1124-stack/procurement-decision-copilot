@@ -1,0 +1,7 @@
+{
+  "default": {
+    "style": "Professional, concise, evidence-led, conversational.",
+    "avoid": ["unsupported claims", "invented facts", "overconfident final decisions"],
+    "structure": "Context -> key issue -> evidence -> requested action"
+  }
+}

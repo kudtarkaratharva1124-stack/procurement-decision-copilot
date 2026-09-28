@@ -1,0 +1,96 @@
+# --------------------------------------------------
+# ENVIRONMENT / SECRETS
+# --------------------------------------------------
+
+.env
+.env.*
+!.env.example
+
+# Microsoft Graph / MSAL token cache
+.graph_token_cache.bin
+*.token_cache
+*.bin
+
+# --------------------------------------------------
+# PYTHON
+# --------------------------------------------------
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+.venv/
+venv/
+env/
+
+.pytest_cache/
+.mypy_cache/
+
+# --------------------------------------------------
+# DATABASE / LOCAL RUNTIME
+# --------------------------------------------------
+
+*.db
+*.sqlite
+*.sqlite3
+
+instance/
+tmp/
+temp/
+
+# --------------------------------------------------
+# GENERATED ATTACHMENTS / PRIVATE EMAIL DATA
+# --------------------------------------------------
+
+data/attachments/
+
+# Do not commit downloaded Outlook/email data
+data/email/
+data/mail/
+data/inbox/
+
+# --------------------------------------------------
+# LOGS
+# --------------------------------------------------
+
+*.log
+logs/
+
+# --------------------------------------------------
+# OS
+# --------------------------------------------------
+
+.DS_Store
+Thumbs.db
+
+# --------------------------------------------------
+# IDE
+# --------------------------------------------------
+
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+
+# --------------------------------------------------
+# BUILD
+# --------------------------------------------------
+
+dist/
+build/
+*.egg-info/
+
+# --------------------------------------------------
+# AZURE LOCAL SETTINGS
+# --------------------------------------------------
+
+azure_function/local.settings.json
+git rm --cached __azurite_db_blob__.json
+git rm --cached __azurite_db_blob_extent__.json
+git rm --cached azure_function/__azurite_db_blob__.json
+git rm --cached azure_function/__azurite_db_blob_extent__.json
+git rm --cached azure_function/__azurite_db_queue__.json
+git rm --cached azure_function/__azurite_db_queue_extent__.json
+git rm --cached azure_function/__azurite_db_table__.json
+git rm --cached azure_function/__blobstorage__/df4f7e66-58e2-4b3f-8329-ce947ea6c1b1
+git rm --cached azure_function/AzuriteConfig
